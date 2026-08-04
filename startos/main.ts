@@ -4,13 +4,13 @@ import { apiPort, mcpPort } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting OpenSERP'))
-  const openserpSub = await sdk.SubContainer.of(
+  const openserpSub = sdk.SubContainer.of(
     effects,
     { imageId: 'openserp' },
     sdk.Mounts.of(),
     'openserp',
   )
-  const mcpSub = await sdk.SubContainer.of(
+  const mcpSub = sdk.SubContainer.of(
     effects,
     { imageId: 'mcp' },
     sdk.Mounts.of(),

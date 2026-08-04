@@ -12,7 +12,7 @@
 
 The currently packaged OCI index digest is
 `sha256:9f5c5736fc7434862fa23dd0955e53d4003ffe42f151a5e1297085decf3100b7`.
-The image tag is used in the SDK manifest because SDK 1.5.3 does not accept a
+The image tag is used in the SDK manifest because the SDK does not accept a
 digest-qualified source; packing embeds the image resolved at build time.
 
 ## Procedure

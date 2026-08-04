@@ -106,7 +106,7 @@ and are not configured by this package revision.
   exported interface. Restrict it with an external firewall until authentication
   is added.
 - StartOS beta.9 provides the subcontainer with a 2 GiB `/dev/shm`, matching
-  upstream Compose. SDK 1.5.3 has no package declaration for this setting, so
+  upstream Compose. The SDK has no package declaration for this setting, so
   it must be rechecked after OS/runtime changes and on each supported host.
 - Custom proxy pools, 2Captcha, engine rate limits, and other advanced config
   are not exposed as StartOS actions yet.
