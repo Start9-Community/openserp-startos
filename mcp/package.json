@@ -1,0 +1,10 @@
+{
+  "name": "openserp-startos-mcp-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned runtime dependencies for the OpenSERP MCP sidecar",
+  "license": "MIT",
+  "dependencies": {
+    "@openserp/mcp": "0.1.6"
+  }
+}

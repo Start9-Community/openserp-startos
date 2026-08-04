@@ -1,0 +1,5 @@
+.git
+.gitmodules
+*.s9pk
+javascript
+node_modules
