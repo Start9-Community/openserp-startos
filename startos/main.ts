@@ -28,7 +28,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
           '-p',
           String(apiPort),
         ]),
-        // Matches upstream `docker run --init` for Chromium child reaping.
+        // Make openserp PID 1 in its own PID namespace. On process exit the
+        // kernel tears down the namespace, so Chromium children are killed with
+        // it — the cleanup upstream gets from compose `init: true`.
         runAsInit: true,
         // OpenSERP can spend up to 30 seconds draining active requests.
         sigtermTimeout: 45_000,

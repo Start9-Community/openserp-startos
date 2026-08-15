@@ -72,15 +72,6 @@ Do not use `localhost`, a `.startos` hostname, or assume external port 3333 from
 the Hermes package. Hermes package code should use `sdk.host.getBridgeAddress`
 with the contract above.
 
-### MCP Access Warning
-
-The MCP server has no authentication. On the tested StartOS 0.4.0 beta.9 host,
-port bindings without exported interface addresses remain reachable through the
-server's LAN IP and assigned port. The MCP host does not appear in the StartOS
-interface address list, but that alone does not make it private on this OS
-version. Block the assigned MCP port from untrusted LAN clients with your network
-firewall until transport authentication is available.
-
 ## Documentation
 
 - [OpenSERP documentation](https://openserp.org/docs/) covers endpoints,

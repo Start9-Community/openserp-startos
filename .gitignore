@@ -6,3 +6,5 @@ node_modules/
 docker-images
 javascript
 ncc-cache
+# Workspace-local notes (never committed/pushed)
+AGENTS.local.md

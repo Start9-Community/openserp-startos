@@ -28,6 +28,6 @@ export const manifest = setupManifest({
       arch: ['x86_64', 'aarch64'],
     },
   },
-  hardwareRequirements: { ram: 2048 },
+  hardwareRequirements: { ram: 2 * 1024 ** 3 },
   dependencies: {},
 })

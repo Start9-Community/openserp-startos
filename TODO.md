@@ -9,8 +9,8 @@
 
 - [x] Install corrected package revision `0.8.12:2` and repeat API, MCP,
       cross-service bridge, LAN exposure, and restart checks. API and MCP recover
-      after restart; bridge access works; the unauthenticated raw LAN port remains
-      reachable as documented below.
+      after restart; bridge access works; on the 0.4.0.1 host the unexported raw
+      MCP port is not LAN-reachable (see below).
 
 - [x] Install package revision `0.8.12:1` on the x86_64 StartOS beta.9 test host
       and confirm the API and MCP processes become healthy.
@@ -19,10 +19,12 @@
       run a DuckDuckGo search.
 - [x] Restart revision `0.8.12:1` and confirm both processes recover, all six
       engines are ready, and MCP search succeeds again.
-- [ ] Add transport authentication or confirm a StartOS mechanism that prevents
-      the raw MCP binding from listening on the LAN. On beta.9,
-      `http://<server-lan-ip>:3333/health` is reachable despite no exported MCP
-      interface addresses.
+- [x] Confirmed on the StartOS 0.4.0.1 test host that an unexported binding is
+      bridge-only: `http://<server-lan-ip>:3333/health` is refused, so the raw
+      MCP port is not LAN-reachable despite no exported interface addresses.
+      (On the earlier 0.4.0 beta.9 host it was reachable; recheck on each
+      supported OS version. Transport authentication remains the long-term
+      fix.)
 
 - [x] Install the x86_64 package revision `0.8.12:0` on the StartOS beta.9 test
       host.
