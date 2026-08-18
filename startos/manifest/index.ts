@@ -12,7 +12,8 @@ export const manifest = setupManifest({
   marketingUrl: 'https://openserp.org',
   donationUrl: null,
   description: { short, long },
-  // SDK 1.5.3 requires a volume. OpenSERP is stateless, so it is not mounted.
+  // The SDK requires at least one volume. OpenSERP is stateless, so this
+  // volume is intentionally not mounted.
   volumes: ['main'],
   images: {
     openserp: {
