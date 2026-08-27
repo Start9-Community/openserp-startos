@@ -28,9 +28,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
           '-p',
           String(apiPort),
         ]),
-        // Make openserp PID 1 in its own PID namespace. On process exit the
-        // kernel tears down the namespace, so Chromium children are killed with
-        // it — the cleanup upstream gets from compose `init: true`.
+        // OpenSERP does not reap the Chromium processes it spawns; as PID 1 of
+        // its own namespace the kernel does it when the server exits.
         runAsInit: true,
         // OpenSERP can spend up to 30 seconds draining active requests.
         sigtermTimeout: 45_000,

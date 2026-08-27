@@ -1,125 +1,261 @@
 <p align="center">
-  <img src="icon.svg" alt="OpenSERP Logo" width="40%">
+  <img src="icon.svg" alt="OpenSERP Logo" width="21%">
 </p>
 
 # OpenSERP on StartOS
 
-> Everything not listed here should behave the same as upstream OpenSERP.
+> Everything not listed in this document should behave the same as upstream
+> OpenSERP. If a feature, setting, or behavior is not mentioned here, the
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-OpenSERP is a self-hosted HTTP API and CLI for structured web and image search
-across Google, Yandex, Baidu, Bing, DuckDuckGo, and Ecosia. The StartOS package
-exposes the API and its interactive OpenAPI documentation, and provides an MCP
-server for AI agents running as other StartOS services.
+OpenSERP is a self-hosted API that returns structured results from Google,
+Yandex, Baidu, Bing, DuckDuckGo, and Ecosia, and extracts the pages it finds.
+This package runs the upstream server with a hardened fixed configuration and
+adds a second container running the official MCP adapter, so AI agents can use
+the same search backend as tools.
+
+- **Upstream repo:** <https://github.com/karust/openserp>
+- **Wrapper repo:** <https://github.com/Start9-Community/openserp-startos>
+
+---
+
+## Table of Contents
+
+- [Image and Container Runtime](#image-and-container-runtime)
+- [Volume and Data Layout](#volume-and-data-layout)
+- [File Models](#file-models)
+- [Dependencies](#dependencies)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
+- [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
+- [Limitations and Differences](#limitations-and-differences)
+- [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
+
+---
 
 ## Image and Container Runtime
 
-The package uses the upstream `karust/openserp` image declared in
-`startos/manifest/index.ts`. That multi-architecture image includes the Go
-server and Chromium headless shell and runs as its non-root `chrome` user.
+Two images: the upstream server, and a small one this repository builds.
 
-The daemon preserves the upstream `openserp` entrypoint and supplies
-`serve -a 0.0.0.0 -p 7000`. It runs as `runAsInit`, making the server PID 1 in
-its own PID namespace — when the server exits, the kernel tears down the
-namespace, so orphaned Chromium children are cleaned up rather than leaking
-under a non-reaping init. This mirrors the cleanup upstream gets from Compose's
-`init: true` / `docker run --init`.
+| Property      | Value                                                     |
+| ------------- | --------------------------------------------------------- |
+| Images        | `karust/openserp` (upstream), plus `mcp` built from `mcp/` |
+| Architectures | x86_64, aarch64                                            |
+| Commands      | both images' own entrypoints, with arguments               |
 
-The package builds a second, non-root image from `mcp/Dockerfile`. It pins Node,
-`@openserp/mcp`, and the complete npm dependency graph. StartOS runs the adapter
-as a separate daemon after the OpenSERP health check succeeds. The adapter uses
-the shared package network namespace to call `http://127.0.0.1:7000` and serves
-Streamable HTTP MCP at `/mcp` on port 3333.
+| Subcontainer | Purpose                                                  |
+| ------------ | -------------------------------------------------------- |
+| `openserp`   | The search server and its bundled headless Chromium       |
+| `mcp`        | The MCP adapter, which calls the server over loopback     |
 
-The wrapper applies conservative fixed settings:
+The upstream image carries the Go server and a Chromium headless shell and runs
+as its unprivileged `chrome` user. The server is launched with `runAsInit` so
+it becomes PID 1 of its own namespace: OpenSERP does not reap the browser
+processes it spawns, and this makes the kernel do it when the server exits —
+the cleanup upstream gets from Compose's `init: true`. Shutdown is given 45
+seconds, because a search in flight can take 30 to drain.
+
+The `mcp` image pins Node, `@openserp/mcp`, and the full dependency graph in
+`mcp/package-lock.json`. It runs as the base image's `node` user. Both
+containers share one network namespace, so the adapter reaches the server on
+loopback.
+
+The wrapper fixes the server's settings rather than exposing them:
 
 - invalid upstream TLS certificates are rejected;
-- request-supplied proxy URLs are disabled;
+- request-supplied proxy URLs are refused;
 - browser concurrency is capped at two processes;
-- leakless browser cleanup is enabled;
-- CORS is disabled because this is an API interface, not a browser application.
+- leakless browser cleanup is on;
+- CORS is off, since nothing here is a browser application.
 
 ## Volume and Data Layout
 
-OpenSERP has no database or durable result store. Search cache, cookies, proxy
-health, browser lanes, and circuit-breaker state are held in memory and reset
-when the service restarts. The StartOS SDK requires a package volume, so the
-declared `main` volume is intentionally not mounted into the container.
+Nothing is persisted.
 
-## Network Access and Interfaces
+| Volume | Mount Point | Purpose                                     |
+| ------ | ----------- | ------------------------------------------- |
+| `main` | not mounted | Declared to satisfy the SDK; holds nothing  |
 
-The `api` interface forwards HTTP to container port 7000. StartOS handles the
-external address and TLS. The interface opens `/docs`, while clients use the
-root service address for API requests.
+Search cache, cookies, proxy health, browser lanes, and circuit-breaker state
+live in memory and are gone at restart. That is upstream's design, not a
+packaging choice — there is no database and no result store to keep.
 
-The `mcp` host binds port 3333 as plaintext HTTP without exporting a user-facing
-interface. A consumer such as Hermes must resolve package `openserp`, host ID
-`mcp`, internal port `3333`, and connect to
-`http://<resolved-bridge-address>/mcp`. The preferred external port is not a
-stable address and must not be hard-coded by a consuming package.
+## File Models
 
-The missing interface export keeps MCP out of the StartOS address UI and
-prevents configured LAN/Tor gateway addresses. On the tested StartOS 0.4.0.1
-host, a bound-but-unexported port is not reachable on the server's LAN IP: the
-binding is effectively bridge-only and `http://<server-lan-ip>:3333` is refused.
-This differs from the earlier StartOS 0.4.0 beta.9 host, where the raw port was
-still LAN-reachable despite the missing export — recheck on each supported OS
-version.
+One model, and it holds nothing OpenSERP itself reads.
 
-OpenSERP OSS does not implement authentication. Every client that can reach an
-enabled interface address can use search, extraction, statistics, docs, and
-health endpoints. Interface exposure is chosen by the StartOS administrator;
-do not enable an address for untrusted clients without a separate authenticating
-proxy.
+| Model        | File                          | Format |
+| ------------ | ----------------------------- | ------ |
+| `store.json` | `store.json` on `main`'s root | JSON   |
 
-The MCP transport also has no authentication. Other installed services with
-bridge access can connect to it; the unexported binding has no StartOS interface
-address, so nothing in the address UI exposes it, and on the tested 0.4.0.1 host
-it is not reachable on the server's LAN IP. Web content returned by search and
-extraction is untrusted input for any connected agent.
+It holds one key, `apiPassword`, written only by the **Set API Password**
+action. `setupInterfaces` reads it reactively and hands it to the OS reverse
+proxy, so rotating it re-arms the gate without a restart. An empty value leaves
+the addresses ungated, which is why the critical task keeps the service stopped
+until one is set.
 
-## Actions
-
-None. This first package revision intentionally uses hardened static settings.
-
-## Backups and Restore
-
-The required empty `main` volume participates in StartOS backups. There is no
-application state to preserve or restore.
-
-## Health Checks
-
-The OpenSERP daemon calls `GET /health` after a 30-second grace period. Upstream
-returns success when at least one engine is available and reports engine and
-runtime status in the response. The MCP daemon starts only after that check and
-then calls its own `GET /health`. The adapter health endpoint only proves that
-the MCP transport is listening; backend health remains covered by the OpenSERP
-daemon check.
+Everything OpenSERP itself reads is delivered as an environment variable at
+launch, and the image's own `config.yml` is left as shipped — there is no
+application configuration on disk to inspect or correct.
 
 ## Dependencies
 
-None. OpenSERP requires outbound DNS and HTTP/HTTPS access to search engines and
-extraction targets. Proxy services and 2Captcha are optional upstream features
-and are not configured by this package revision.
+None. OpenSERP does need outbound DNS and HTTPS to reach the search engines and
+the pages it extracts; a server with no egress will start and pass its health
+check but fail every query.
+
+## Network Access and Interfaces
+
+Two interfaces, both plain HTTP terminated by StartOS.
+
+| Interface | Id    | Type | Port | Description                                          |
+| --------- | ----- | ---- | ---- | ---------------------------------------------------- |
+| API       | `api` | api  | 7000 | Search, extraction, statistics, and the Swagger docs |
+| MCP       | `mcp` | api  | 3333 | Streamable HTTP transport for agent tools            |
+
+The API interface opens at `/docs`; callers use the root of the address as
+their base URL. The MCP interface opens at `/mcp`, which is also the path an
+agent connects to.
+
+**OpenSERP has no authentication of its own**, so this package has StartOS
+supply it. Both bindings carry `addSsl.auth`, an HTTP basic gate the OS reverse
+proxy enforces before a request reaches the container: every address answers
+`401` with `WWW-Authenticate: Basic realm="OpenSERP"` until the caller presents
+the username `admin` and the stored password. Nothing inside the container
+changes — the gate is entirely at the edge.
+
+The gate rides on the TLS variant, which is every address a person can reach:
+LAN, mDNS, private and public domains. The plaintext binding is bridge and
+loopback only, and stays open, so **a sibling service resolving this package's
+host and internal port — `openserp` / `mcp` / `3333` for the adapter — needs no
+credential.** That is deliberate: service-to-service traffic never leaves the
+box. The external port is assigned by StartOS and must not be hard-coded.
+
+What the gate does not cover: web content returned by a search is still
+untrusted input for whatever agent consumes it.
+
+## Installation and First-Run Flow
+
+**The service will not start until an API password is set.** A `critical` task
+raised at install points at the action that sets one, and StartOS refuses
+`start` while it stands. That ordering is the point: OpenSERP will happily serve
+an open search-and-fetch API to anyone who can reach it, so the package never
+lets it listen before the gate exists.
+
+Nothing else is configured. Once the password is set the server starts, and the
+MCP adapter follows once the server's health check passes.
+
+## Actions
+
+One action, used once for setup and thereafter for rotation.
+
+**Set API Password** (`set-password`)
+
+- **When to run it** — at install, when the critical task asks for it; later,
+  whenever the password should be rotated or has been lost.
+- **What it changes** — `apiPassword` in `store.json`, and through it the
+  credential the OS reverse proxy enforces. Nothing inside the container.
+- **Cost** — seconds, with no restart: the interfaces re-arm reactively.
+- **Repeat safety** — safe to repeat; each run replaces the credential, and
+  every client still using the old one starts getting `401`.
+- **Outputs** — the username (always `admin`) and the password, masked and
+  copyable. The form pre-fills with the current password, so it doubles as a
+  way to look it up.
+
+## Tasks
+
+One task, and it blocks startup by design.
+
+| Task             | Severity   | Raised by                            | Cleared by         |
+| ---------------- | ---------- | ------------------------------------ | ------------------ |
+| Set API Password | `critical` | Init, whenever no password is stored | Running the action |
+
+Being `critical`, it suspends the service's ordinary controls until satisfied —
+correct here, because starting without it would publish an unauthenticated
+search API. The condition is re-evaluated reactively, so setting the password
+clears the task without a restart.
+
+## Health Checks
+
+Two checks, one per container, ordered.
+
+| Check      | Displayed | Method                                        | Grace |
+| ---------- | --------- | --------------------------------------------- | ----- |
+| `openserp` | "API"     | `GET /health` run inside the server container | 30 s  |
+| `mcp`      | "MCP"     | `GET /health` on the adapter                  | 5 s   |
+
+Upstream's `/health` succeeds when at least one search engine is available and
+reports per-engine status in its body, so a failure after the grace period
+usually means egress is blocked or every engine is rate-limiting — check the
+body before suspecting the container. The adapter's check only proves its
+transport is listening; the server's check is what covers the backend. The
+adapter does not start until the server is ready, so an `mcp` failure with
+`openserp` green points at the adapter itself.
+
+## Backups and Restore
+
+The declared `main` volume is copied wholesale — `sdk.Backups.ofVolumes('main')`
+— and it is empty. There is no application state to preserve, and a restored
+instance is immediately equivalent to a fresh one.
 
 ## Limitations and Differences
 
-- OpenSERP remains unauthenticated; StartOS interface type is metadata, not an
-  authorization control.
-- The MCP endpoint has no transport authentication or Origin allowlist. The
-  unexported binding is bridge-only on the tested StartOS 0.4.0.1 host (the raw
-  port is not LAN-reachable), but there is no package-level mechanism enforcing
-  that isolation, so recheck it after OS/runtime changes and on each supported
-  host.
-- StartOS provides the subcontainer with a 2 GiB `/dev/shm`, matching
-  upstream Compose. The SDK has no package declaration for this setting, so
-  it must be rechecked after OS/runtime changes and on each supported host.
-- Custom proxy pools, 2Captcha, engine rate limits, and other advanced config
-  are not exposed as StartOS actions yet.
-- Runtime caches and cookies intentionally do not survive a restart.
+1. **The authentication is StartOS's, not OpenSERP's.** Upstream ships no login
+   at all; this package gates both addresses with HTTP basic at the OS reverse
+   proxy. Every client therefore needs the credential, including MCP clients,
+   which must be able to send an `Authorization` header or accept it in the URL.
+   A sibling service on this server reaches the bridge address and is exempt.
+2. **No proxy pool, no 2Captcha, no engine tuning.** Upstream supports all
+   three; this package ships fixed settings and exposes no action to change
+   them.
+3. **Caches and cookies do not survive a restart.** Held in memory by design, so
+   the first query after a restart pays full latency.
+4. **Search depends on the engines cooperating.** Rate limiting and CAPTCHAs at
+   the far end surface as failed queries against a healthy service.
 
-## What Is Unchanged from Upstream
+---
 
-Search and image endpoints, megasearch, URL extraction, output formats,
-OpenAPI documentation, health/readiness endpoints, response caching, resilience,
-and bundled Chromium behavior come directly from upstream. MCP tool schemas and
-transport behavior come from the official `@openserp/mcp` package.
+## Quick Reference for AI Consumers
+
+```yaml
+package_id: openserp
+image: karust/openserp # plus a locally built `mcp` image
+architectures:
+  - x86_64
+  - aarch64
+subcontainers:
+  - openserp # the search server
+  - mcp # the MCP adapter
+volumes:
+  main: null # declared, never mounted
+file_models:
+  - store.json
+startos_managed_env_vars:
+  - OPENSERP_SERVER_HOST
+  - OPENSERP_SERVER_PORT
+  - OPENSERP_SERVER_INSECURE
+  - OPENSERP_PROXIES_ALLOW_REQUEST_PROXY_URL
+  - OPENSERP_CORS_ENABLED
+  - OPENSERP_APP_BROWSER_PATH
+  - OPENSERP_APP_MAX_PROCESSES
+  - OPENSERP_APP_LEAKLESS
+  - OPENSERP_APP_LOG_FORMAT
+  - OPENSERP_BACKEND
+  - OPENSERP_BASE_URL
+  - OPENSERP_TIMEOUT_MS
+dependencies: []
+interfaces: # both gated by proxy-enforced HTTP basic, user `admin`
+  api: { type: api, port: 7000 }
+  mcp: { type: api, port: 3333 }
+actions:
+  - set-password
+tasks:
+  - { action: set-password, severity: critical }
+health_checks:
+  - openserp # displayed "API"
+  - mcp # displayed "MCP"
+```

@@ -1,84 +1,94 @@
 # OpenSERP
 
-OpenSERP provides a self-hosted API for web search, image search, multi-engine
-search, and web-page extraction.
-
-## Getting Started
-
-1. Start OpenSERP and wait for the **API** and **MCP** health checks to become
-   healthy.
-2. Open the **API** interface. StartOS opens OpenSERP's interactive Swagger
-   documentation at `/docs`.
-3. Use the service address shown by StartOS as your API base URL. The assigned
-   external port may differ from 7000.
-
-For example, append this path to the service address to query DuckDuckGo:
-
-```text
-/duckduckgo/search?text=StartOS&limit=5
-```
-
-Useful endpoints include:
-
-- `/mega/search?text=privacy` for multi-engine web search
-- `/bing/image?text=StartOS` for image search
-- `/extract?url=https://example.com&format=markdown` for page extraction
-- `/health` and `/ready` for service status
-- `/openapi.yaml` for the machine-readable API specification
-
-## Access Warning
-
-The open-source OpenSERP server has no built-in authentication. Anyone who can
-reach an enabled OpenSERP interface address can use all API endpoints. Only
-enable interface addresses for clients you trust, or place a separate
-authenticating proxy in front of the service.
-
-Search caches, cookies, browser sessions, and proxy health are memory-only and
-reset when the service restarts. OpenSERP stores no user data that needs backup.
-
-## Connect Hermes Agent
-
-The MCP server is intentionally not shown as a user-facing StartOS interface.
-Hermes should connect through StartOS service-to-service networking.
-
-The Hermes StartOS package should declare OpenSERP as a running dependency and
-resolve this binding instead of hard-coding an address:
-
-```text
-package ID: openserp
-host ID:    mcp
-port:       3333
-protocol:   HTTP
-path:       /mcp
-```
-
-Its resulting Hermes configuration is:
-
-```yaml
-mcp_servers:
-  openserp:
-    url: "http://<resolved-bridge-address>/mcp"
-    connect_timeout: 30
-    timeout: 120
-    supports_parallel_tool_calls: true
-```
-
-Restart Hermes or run `/reload-mcp` after changing its MCP configuration. Hermes
-registers tools with names such as `mcp_openserp_search`,
-`mcp_openserp_mega_search`, and `mcp_openserp_extract`.
-
-The bridge address and assigned port are selected by StartOS and can change.
-Do not use `localhost`, a `.startos` hostname, or assume external port 3333 from
-the Hermes package. Hermes package code should use `sdk.host.getBridgeAddress`
-with the contract above.
+OpenSERP has no login of its own, so StartOS puts one in front of it. Setting
+that password is the first thing you do, and the service will not start until
+you have.
 
 ## Documentation
 
-- [OpenSERP documentation](https://openserp.org/docs/) covers endpoints,
-  parameters, formats, extraction, and client examples.
-- [OpenSERP MCP](https://github.com/openserpapi/mcp) documents the available
-  agent tools and MCP transports.
-- [Interactive API reference](https://openserp.org/docs/#api-docs) explains the
-  Swagger and OpenAPI endpoints included in the running service.
-- [Architecture](https://openserp.org/docs/architecture/) describes browser and
-  raw HTTP modes, resilience, caching, and proxy behavior.
+- [OpenSERP documentation](https://openserp.org/docs/) — endpoints, parameters, output formats, and client examples.
+- [Interactive API reference](https://openserp.org/docs/#api-docs) — the Swagger and OpenAPI endpoints the running service serves.
+- [Architecture](https://openserp.org/docs/architecture/) — browser and raw-HTTP modes, caching, resilience, and proxy behavior.
+- [OpenSERP MCP](https://github.com/openserpapi/mcp) — the agent tools the MCP endpoint exposes.
+
+## What you get on StartOS
+
+- **A search API** that returns structured results from Google, Yandex, Baidu,
+  Bing, DuckDuckGo, and Ecosia, and extracts the text of pages it finds. It
+  opens on its own interactive documentation.
+- **An MCP endpoint** on a second address, so an AI assistant can use the same
+  search as a tool without you writing any glue.
+- **A password on both of them**, which StartOS checks before anything reaches
+  the service.
+- **Nothing to configure and nothing stored.** No accounts, no database, no
+  results kept between restarts.
+
+## Getting set up
+
+1. Open the service. It will be showing a **Set API Password** task — run it.
+   Use the generate button, or type your own.
+2. **Save the username and password.** The username is always `admin`. You will
+   need both for every request, and for your browser the first time it opens
+   either address.
+3. Start the service and wait for the **API** and **MCP** health checks to go
+   green.
+4. Open the **API** interface. Your browser asks for the username and password,
+   then lands on the interactive documentation where you can try any endpoint.
+5. Use the address itself — without the documentation path — as the base URL for
+   your own requests. For example:
+
+   ```bash
+   curl -u admin:<your-password> \
+     "<address>/duckduckgo/search?text=StartOS&limit=5"
+   ```
+
+Endpoints worth knowing:
+
+- `/mega/search?text=privacy` — search several engines at once
+- `/bing/image?text=StartOS` — image search
+- `/extract?url=https://example.com&format=markdown` — pull a page's text
+- `/health` and `/ready` — what the service thinks of itself
+- `/openapi.yaml` — the machine-readable specification
+
+## Using OpenSERP
+
+### Connecting an AI assistant
+
+The **MCP** interface is a Model Context Protocol endpoint. Point any MCP client
+at that address and it gains search and extraction as tools, named `search`,
+`mega_search`, and `extract`.
+
+Your client has to send the same username and password. Most accept either a
+custom `Authorization` header or credentials in the URL
+(`https://admin:<your-password>@<host>:<port>/mcp`). A client that can do
+neither cannot use this endpoint.
+
+**Another service on this same server does not need the password.** Services
+talk to each other over an internal address that never leaves the machine, and
+that address is not behind the gate. Only addresses reachable from outside the
+server ask for credentials.
+
+### If you lose the password
+
+Run **Actions → Set API Password** again. The form shows the current password,
+so it doubles as a way to look it up, and saving a new one takes effect
+immediately. Anything still using the old password will start getting rejected.
+
+### Searches that fail on a healthy service
+
+The engines OpenSERP queries push back on automated traffic. A query that
+returns nothing, or an error, while the health check stays green usually means
+an engine is rate-limiting or serving a CAPTCHA — try another engine, or
+`/mega/search` to spread the load. Nothing on the StartOS side needs restarting.
+
+### Actions
+
+- **Set API Password** — sets or rotates the password guarding both addresses,
+  and shows you the one currently in effect.
+
+## Limitations
+
+- Proxy pools, 2Captcha, and per-engine tuning are supported upstream but not
+  exposed here.
+- Search results are whatever the web returned. An assistant reading them is
+  reading untrusted text; treat its conclusions accordingly.
