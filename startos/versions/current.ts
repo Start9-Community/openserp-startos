@@ -1,13 +1,13 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.8.12:2',
+  version: '0.8.12:0',
   releaseNotes: {
-    en_US: 'Add an MCP server for AI agents and document its access boundary',
-    es_ES: 'Añade un servidor MCP para agentes de IA y documenta sus límites de acceso',
-    de_DE: 'Fügt einen MCP-Server für KI-Agenten hinzu und dokumentiert dessen Zugriffsgrenzen',
-    pl_PL: 'Dodaje serwer MCP dla agentów AI i dokumentuje granice dostępu',
-    fr_FR: 'Ajoute un serveur MCP pour les agents IA et documente ses limites d’accès',
+    en_US: 'Initial release of OpenSERP for StartOS.',
+    es_ES: 'Versión inicial de OpenSERP para StartOS.',
+    de_DE: 'Erstveröffentlichung von OpenSERP für StartOS.',
+    pl_PL: 'Pierwsze wydanie OpenSERP dla StartOS.',
+    fr_FR: 'Version initiale de OpenSERP pour StartOS.',
   },
   migrations: {
     up: async ({ effects }) => {},

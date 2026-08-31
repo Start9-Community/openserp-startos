@@ -5,15 +5,13 @@ export const manifest = setupManifest({
   id: 'openserp',
   title: 'OpenSERP',
   license: 'MIT',
-  // The SDK requires this field before the new package repository exists.
-  // Replace it with the final package repository URL before publication.
-  packageRepo: 'https://github.com/karust/openserp',
+  packageRepo: 'https://github.com/Start9-Community/openserp-startos',
   upstreamRepo: 'https://github.com/karust/openserp',
   marketingUrl: 'https://openserp.org',
   donationUrl: null,
   description: { short, long },
-  // The SDK requires at least one volume. OpenSERP is stateless, so this
-  // volume is intentionally not mounted.
+  // OpenSERP is stateless; this volume is declared to satisfy the SDK and is
+  // never mounted.
   volumes: ['main'],
   images: {
     openserp: {
