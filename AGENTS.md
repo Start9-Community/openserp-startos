@@ -18,7 +18,10 @@ Freshly scaffolded? Work the
 guide page, not a file in this repo — read it, don't copy it in.
 
 Keep `README.md` (technical reference for an AI support or administering agent) and
-`instructions.md` (end-user docs) in sync with your changes.
+`instructions.md` (end-user docs) in sync with your changes. This file restates neither:
+whoever changes the package has both, so it carries only what they don't — repo mechanics,
+a change that looks right and is not, where the next thing gets added, a naming trap, a
+build or test invocation particular to this repo.
 
 **Fix a defect you spot rather than reporting it** — you have the package open and the
 context to be sure. File **a GitHub issue on this repo** only when the call isn't yours to
@@ -31,6 +34,6 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **`runAsInit` on the `openserp` daemon is load-bearing.** OpenSERP does not reap the Chromium processes it spawns; making it PID 1 of its own namespace lets the kernel tear them down when it exits. This is the cleanup upstream gets from Compose's `init: true`.
-- **The auth gate is StartOS's, not OpenSERP's.** Upstream ships no login, so `setupInterfaces` attaches `addSsl.auth` to both bindings. It rides the TLS variant only — the plaintext bridge address stays open so a sibling service needs no credential. Don't "fix" that asymmetry; it is what makes service-to-service work.
-- **The `mcp` image is built from `mcp/`, not pulled.** Its dependency graph is pinned by `mcp/package-lock.json`, so a version bump there means regenerating the lock, not editing `package.json` alone.
+- **Keep `runAsInit` on the `openserp` daemon** — OpenSERP does not reap the Chromium processes it spawns.
+- **Leave the plaintext bridge address ungated** — it is how a sibling service reaches OpenSERP without a credential.
+- **Regenerate `mcp/package-lock.json` when changing the `mcp` image's dependencies** — it pins that image's whole graph.

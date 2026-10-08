@@ -161,7 +161,9 @@ One action, used once for setup and thereafter for rotation.
   credential the OS reverse proxy enforces. Nothing inside the container.
 - **Cost** — seconds, with no restart: the interfaces re-arm reactively.
 - **Repeat safety** — safe to repeat; each run replaces the credential, and
-  every client still using the old one starts getting `401`.
+  every client still using the old one starts getting `401`. When a password is
+  already stored, the action warns of this and asks for confirmation; the first
+  run does not.
 - **Outputs** — the username (always `admin`) and the password, masked and
   copyable. The form pre-fills with the current password, so it doubles as a
   way to look it up.

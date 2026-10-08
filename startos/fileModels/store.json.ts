@@ -1,7 +1,7 @@
 import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
-const shape = z.object({
+const shape = z.looseObject({
   // Empty leaves both interfaces ungated; the critical task keeps the service
   // stopped until it is set.
   apiPassword: z.string().optional().catch(undefined),

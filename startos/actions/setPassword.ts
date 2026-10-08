@@ -23,16 +23,18 @@ const inputSpec = InputSpec.of({
 export const setPassword = sdk.Action.withInput(
   'set-password',
 
-  {
+  async ({ effects }) => ({
     name: i18n('Set API Password'),
     description: i18n(
       'Set or rotate the password protecting the API and MCP addresses. OpenSERP has no login of its own, so StartOS enforces this one at the edge.',
     ),
-    warning: i18n('Every client using the old password stops working.'),
+    warning: (await storeJson.read((s) => s?.apiPassword).const(effects))
+      ? i18n('Every client using the old password stops working.')
+      : null,
     allowedStatuses: 'any',
     group: null,
     visibility: 'enabled',
-  },
+  }),
 
   inputSpec,
 
