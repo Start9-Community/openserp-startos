@@ -1,18 +1,13 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.8.12:1',
+  version: '0.8.12:2',
   releaseNotes: {
-    en_US:
-      '- Set API Password asks for confirmation only when it replaces an existing password.',
-    es_ES:
-      '- Definir contraseña de la API pide confirmación solo cuando reemplaza una contraseña existente.',
-    de_DE:
-      '- „API-Passwort festlegen“ fragt nur dann nach einer Bestätigung, wenn es ein bestehendes Passwort ersetzt.',
-    pl_PL:
-      '- „Ustaw hasło API” prosi o potwierdzenie tylko wtedy, gdy zastępuje istniejące hasło.',
-    fr_FR:
-      "- Définir le mot de passe de l'API demande une confirmation uniquement lorsqu'il remplace un mot de passe existant.",
+    en_US: 'Updates Node.js to 22.23.4 with security fixes.',
+    es_ES: 'Actualiza Node.js a 22.23.4 con correcciones de seguridad.',
+    de_DE: 'Aktualisiert Node.js auf 22.23.4 mit Sicherheitskorrekturen.',
+    pl_PL: 'Aktualizuje Node.js do wersji 22.23.4 z poprawkami bezpieczeństwa.',
+    fr_FR: 'Met à jour Node.js vers 22.23.4 avec des correctifs de sécurité.',
   },
   migrations: {
     up: async ({ effects }) => {},
