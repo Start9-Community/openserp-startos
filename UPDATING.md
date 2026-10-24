@@ -1,8 +1,9 @@
 # Updating the upstream version
 
-This package pins two things independently: the upstream
-[OpenSERP](https://github.com/karust/openserp) image, and the MCP adapter built
-from `mcp/`.
+This package pins three things independently: the upstream
+[OpenSERP](https://github.com/karust/openserp) image, the
+`chromedp/headless-shell` base the root `Dockerfile` rebuilds it on, and the MCP
+adapter built from `mcp/`.
 
 ## Determining the upstream version
 
@@ -15,7 +16,19 @@ from `mcp/`.
   ```
 
   Both `linux/amd64` and `linux/arm64` must be present. The current pin lives in
-  `startos/manifest/index.ts` at `images.openserp.source.dockerTag`.
+  `startos/manifest/index.ts` at `images.openserp.source.dockerBuild.buildArgs.OPENSERP`.
+
+- **headless-shell** — re-pin the `HEADLESS_SHELL` digest beside it to the
+  current `stable` build on every bump, read from
+  `docker buildx imagetools inspect chromedp/headless-shell:stable`.
+  Chromium's trusted roots are compiled in: version 156.0.8078.48 still trusts
+  emSign ECC Root CA - G3, regardless of the image's build date. Keep the root
+  `Dockerfile`'s explicit NSS distrust record until the browser itself is
+  verified to reject G3. `assets/emsign-ecc-root-ca-g3.pem` is that public
+  certificate, SHA-256
+  `86a1ecba089c4a8d3bbe2734c612ba341d813e043cf9e8a862cd5c57a36bbe6b`,
+  from Chromium's tagged `net/data/ssl/chrome_root_store/root_store.certs`.
+  Never import it as trusted: the SSL trust flag must remain `p` (prohibited).
 
 - **@openserp/mcp** ([openserpapi/mcp](https://github.com/openserpapi/mcp)) —
   the adapter is pinned in `mcp/package.json`, its graph in
@@ -23,10 +36,12 @@ from `mcp/`.
 
 ## Applying the bump
 
-- Bump `dockerTag` in `startos/manifest/index.ts`.
+- Bump `OPENSERP` and re-pin `HEADLESS_SHELL` in `startos/manifest/index.ts`.
 - Set `version` in `startos/versions/current.ts` to `<new version>:0` and
   rewrite `releaseNotes` in every locale.
-- Compare the tagged Dockerfile, Compose file, config sample, and OpenAPI spec
+- Compare the tagged Dockerfile's final stage with the root `Dockerfile`, which
+  rebuilds it: the files it copies, the packages it installs, and the `chrome`
+  user. Then compare the Compose file, config sample, and OpenAPI spec
   against what this package assumes: the entrypoint and its `serve` flags, the
   `chrome` user, the browser path in `OPENSERP_APP_BROWSER_PATH`, the internal
   port, and the `OPENSERP_*` variable names the wrapper sets.
