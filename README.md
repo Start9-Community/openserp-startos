@@ -55,10 +55,13 @@ Two images, both built by this repository.
 The `openserp` image is upstream's final stage rebuilt: the Go server and
 `config.yaml` copied from `karust/openserp`, on a digest-pinned
 `chromedp/headless-shell` with Debian's `ca-certificates` for the server's own
-HTTPS requests. The rebuild is temporary: the image goes back to upstream's
-`karust/openserp` once upstream pins a headless-shell built after 2026-10-20
-and ships a fixed CA bundle. It runs as the unprivileged `chrome` user. The server is
-launched with `runAsInit` so it becomes PID 1 of its own namespace: OpenSERP
+HTTPS requests. Chromium 156 still embeds emSign ECC Root CA - G3, so the
+image explicitly distrusts that certificate in the `chrome` user's NSS database
+at `/home/chrome/.pki/nssdb`. The checked-in certificate is a deny record, not
+a trust anchor. The rebuild is temporary: return to upstream's `karust/openserp`
+only after both its browser and system trust stores reject G3; an image's build
+date alone does not establish that. It runs as the unprivileged `chrome` user.
+The server is launched with `runAsInit` so it becomes PID 1 of its own namespace: OpenSERP
 does not reap the browser processes it spawns, and this makes the kernel do it
 when the server exits — the cleanup upstream gets from Compose's `init: true`. Shutdown is given 45
 seconds, because a search in flight can take 30 to drain.
