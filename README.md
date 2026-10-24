@@ -39,24 +39,28 @@ the same search backend as tools.
 
 ## Image and Container Runtime
 
-Two images: the upstream server, and a small one this repository builds.
+Two images, both built by this repository.
 
-| Property      | Value                                                     |
-| ------------- | --------------------------------------------------------- |
-| Images        | `karust/openserp` (upstream), plus `mcp` built from `mcp/` |
-| Architectures | x86_64, aarch64                                            |
-| Commands      | both images' own entrypoints, with arguments               |
+| Property      | Value                                                    |
+| ------------- | -------------------------------------------------------- |
+| Images        | `openserp` and `mcp`, built from `Dockerfile` and `mcp/` |
+| Architectures | x86_64, aarch64                                          |
+| Commands      | both images' own entrypoints, with arguments             |
 
-| Subcontainer | Purpose                                                  |
-| ------------ | -------------------------------------------------------- |
-| `openserp`   | The search server and its bundled headless Chromium       |
-| `mcp`        | The MCP adapter, which calls the server over loopback     |
+| Subcontainer | Purpose                                               |
+| ------------ | ----------------------------------------------------- |
+| `openserp`   | The search server and its bundled headless Chromium   |
+| `mcp`        | The MCP adapter, which calls the server over loopback |
 
-The upstream image carries the Go server and a Chromium headless shell and runs
-as its unprivileged `chrome` user. The server is launched with `runAsInit` so
-it becomes PID 1 of its own namespace: OpenSERP does not reap the browser
-processes it spawns, and this makes the kernel do it when the server exits —
-the cleanup upstream gets from Compose's `init: true`. Shutdown is given 45
+The `openserp` image is upstream's final stage rebuilt: the Go server and
+`config.yaml` copied from `karust/openserp`, on a digest-pinned
+`chromedp/headless-shell` with Debian's `ca-certificates` for the server's own
+HTTPS requests. The rebuild is temporary: the image goes back to upstream's
+`karust/openserp` once upstream pins a headless-shell built after 2026-10-20
+and ships a fixed CA bundle. It runs as the unprivileged `chrome` user. The server is
+launched with `runAsInit` so it becomes PID 1 of its own namespace: OpenSERP
+does not reap the browser processes it spawns, and this makes the kernel do it
+when the server exits — the cleanup upstream gets from Compose's `init: true`. Shutdown is given 45
 seconds, because a search in flight can take 30 to drain.
 
 The `mcp` image pins Node, `@openserp/mcp`, and the full dependency graph in
@@ -76,9 +80,9 @@ The wrapper fixes the server's settings rather than exposing them:
 
 Nothing is persisted.
 
-| Volume | Mount Point | Purpose                                     |
-| ------ | ----------- | ------------------------------------------- |
-| `main` | not mounted | Declared to satisfy the SDK; holds nothing  |
+| Volume | Mount Point | Purpose                                    |
+| ------ | ----------- | ------------------------------------------ |
+| `main` | not mounted | Declared to satisfy the SDK; holds nothing |
 
 Search cache, cookies, proxy health, browser lanes, and circuit-breaker state
 live in memory and are gone at restart. That is upstream's design, not a
@@ -225,7 +229,7 @@ instance is immediately equivalent to a fresh one.
 
 ```yaml
 package_id: openserp
-image: karust/openserp # plus a locally built `mcp` image
+images: [openserp, mcp] # openserp: karust/openserp on chromedp/headless-shell (temporary rebuild)
 architectures:
   - x86_64
   - aarch64

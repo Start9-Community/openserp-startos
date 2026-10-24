@@ -15,7 +15,15 @@ export const manifest = setupManifest({
   volumes: ['main'],
   images: {
     openserp: {
-      source: { dockerTag: 'karust/openserp:0.8.12' },
+      source: {
+        dockerBuild: {
+          buildArgs: {
+            OPENSERP: 'karust/openserp:0.8.14',
+            HEADLESS_SHELL:
+              'chromedp/headless-shell:stable@sha256:3da74b0945e4f80f00f0310bcda9f76cee283539ebd200a053a7bebf3de89423',
+          },
+        },
+      },
       arch: ['x86_64', 'aarch64'],
     },
     mcp: {

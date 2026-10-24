@@ -1,8 +1,9 @@
 # Updating the upstream version
 
-This package pins two things independently: the upstream
-[OpenSERP](https://github.com/karust/openserp) image, and the MCP adapter built
-from `mcp/`.
+This package pins three things independently: the upstream
+[OpenSERP](https://github.com/karust/openserp) image, the
+`chromedp/headless-shell` base the root `Dockerfile` rebuilds it on, and the MCP
+adapter built from `mcp/`.
 
 ## Determining the upstream version
 
@@ -15,7 +16,11 @@ from `mcp/`.
   ```
 
   Both `linux/amd64` and `linux/arm64` must be present. The current pin lives in
-  `startos/manifest/index.ts` at `images.openserp.source.dockerTag`.
+  `startos/manifest/index.ts` at `images.openserp.source.dockerBuild.buildArgs.OPENSERP`.
+
+- **headless-shell** — Chromium's trusted roots are compiled in, so re-pin the
+  `HEADLESS_SHELL` digest beside it to the current `stable` build on every
+  bump, read from `docker buildx imagetools inspect chromedp/headless-shell:stable`.
 
 - **@openserp/mcp** ([openserpapi/mcp](https://github.com/openserpapi/mcp)) —
   the adapter is pinned in `mcp/package.json`, its graph in
@@ -23,10 +28,12 @@ from `mcp/`.
 
 ## Applying the bump
 
-- Bump `dockerTag` in `startos/manifest/index.ts`.
+- Bump `OPENSERP` and re-pin `HEADLESS_SHELL` in `startos/manifest/index.ts`.
 - Set `version` in `startos/versions/current.ts` to `<new version>:0` and
   rewrite `releaseNotes` in every locale.
-- Compare the tagged Dockerfile, Compose file, config sample, and OpenAPI spec
+- Compare the tagged Dockerfile's final stage with the root `Dockerfile`, which
+  rebuilds it: the files it copies, the packages it installs, and the `chrome`
+  user. Then compare the Compose file, config sample, and OpenAPI spec
   against what this package assumes: the entrypoint and its `serve` flags, the
   `chrome` user, the browser path in `OPENSERP_APP_BROWSER_PATH`, the internal
   port, and the `OPENSERP_*` variable names the wrapper sets.
