@@ -37,8 +37,6 @@ adapter built from `mcp/`.
 ## Applying the bump
 
 - Bump `OPENSERP` and re-pin `HEADLESS_SHELL` in `startos/manifest/index.ts`.
-- Set `version` in `startos/versions/current.ts` to `<new version>:0` and
-  rewrite `releaseNotes` in every locale.
 - Compare the tagged Dockerfile's final stage with the root `Dockerfile`, which
   rebuilds it: the files it copies, the packages it installs, and the `chrome`
   user. Then compare the Compose file, config sample, and OpenAPI spec
@@ -48,9 +46,6 @@ adapter built from `mcp/`.
 - Check for new defaults around CORS, TLS verification, and request-supplied
   proxy URLs — the package turns all three off, and a rename silently restores
   upstream's default.
-- Browser-backed search behaves differently per architecture. Exercise a real
-  web search, an image search, and an extraction on native x86_64 and aarch64
-  before publishing both.
 
 ## Bumping the MCP adapter
 
@@ -60,8 +55,6 @@ adapter built from `mcp/`.
    and run `npm audit --omit=dev`.
 3. Update the Node base digest in `mcp/Dockerfile` and verify it with
    `docker buildx imagetools inspect`.
-4. Build both architectures and check `/health`, MCP initialization,
-   `tools/list`, one real search through a tool call, and a graceful restart.
-5. Re-read the transport for changes to its route, protocol version, or
+4. Re-read the transport for changes to its route, protocol version, or
    authentication — the endpoint is exported as a user-facing interface, so a
    change in what it accepts is a change in this package's exposure.
